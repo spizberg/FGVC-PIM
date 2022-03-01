@@ -1,5 +1,4 @@
 import os
-import wandb
 import torch
 import torch.nn as nn
 import json
@@ -179,7 +178,6 @@ def train(args, epoch, model, scaler, optimizer, schedules, train_loader, save_d
             for name in losses:
                 msg["train_loss/train_loss_"+name] = losses[name]
 
-            wandb.log(msg)
 
         
 
@@ -371,7 +369,6 @@ def test(args, model, test_loader):
     msg = {}
     for name in accuracys:
         msg["test_acc/test_acc_"+name] = 100*accuracys[name]/total
-    wandb.log(msg)
 
     best_acc = -1
     for name in msg:
@@ -384,18 +381,12 @@ def test(args, model, test_loader):
 
 if __name__ == "__main__":
     args = get_args()
-    
-    wandb.init(entity='',
-               project="",
-               name=args.exp_name,
-               config=args)
 
     train_loader, test_loader, model, optimizer, schedule = set_environment(args)
 
     scaler = torch.cuda.amp.GradScaler()
 
     best_acc = 0.0
-    wandb.run.summary["best_accuracy"] = best_acc
     save_dist = False
     for epoch in range(args.max_epochs):
         
@@ -423,13 +414,10 @@ if __name__ == "__main__":
 
         if epoch == 0 or (epoch+1) % args.test_freq == 0:
             test_acc = test(args, model, test_loader)
-            # wandb.log({"test_acc":test_acc})
             # save to best.pt
             torch.save(save_dict, args.save_root + "backup/last.pth")
             if test_acc > best_acc:
                 best_acc = test_acc
-                wandb.run.summary["best_accuracy"] = best_acc # upload to wandb
-                wandb.run.summary["best_epoch"] = epoch+1 # upload to wandb
                 if os.path.isfile(args.save_root + "backup/best.pth"):
                     os.remove(args.save_root + "backup/best.pth")
                 torch.save(save_dict, args.save_root + "backup/best.pth")
